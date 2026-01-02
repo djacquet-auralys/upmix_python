@@ -11,6 +11,7 @@ Ce projet implémente un algorithme d'upmix basé sur l'analyse fréquentielle (
 ```
 auralys_upmix/
 ├── upmix_algorithm/          # Code principal de l'algorithme
+│   ├── upmix_processor.py    # Processeur principal (classe UpmixProcessor)
 │   ├── modules/              # Modules de traitement audio
 │   │   ├── biquad_filter.py  # Filtres IIR Biquad (LPF, HPF, PK, Shelves)
 │   │   ├── crossover.py      # Crossovers et somme à puissance constante
@@ -72,18 +73,49 @@ pip install -r requirements.txt
 
 ## Utilisation
 
+### Upmix complet (stéréo → 5.1)
+
 ```python
-from upmix_algorithm.modules import STFTProcessor, Crossover, LFEProcessor, estimate_panning
-
-# Exemple d'utilisation STFT
-processor = STFTProcessor(nfft=128, overlap=0.25)
-stft = processor.forward(audio_signal)
-reconstructed = processor.inverse(stft)
-
-# Estimation de panning à partir des magnitudes STFT
+from upmix_algorithm import UpmixProcessor, create_default_params
 import numpy as np
+
+# Créer les paramètres par défaut
+params = create_default_params(
+    input_layout="stereo",
+    output_layout="5.1",
+    n_sources=5
+)
+
+# Initialiser le processeur
+processor = UpmixProcessor(
+    params=params,
+    input_layout="stereo",
+    output_layout="5.1",
+    sample_rate=48000.0
+)
+
+# Traiter un signal stéréo (n_samples, 2)
+input_signal = np.random.randn(48000, 2).astype(np.float32) * 0.1
+output_signal = processor.process(input_signal)  # (n_samples, 6)
+
+# Ou traiter un fichier WAV
+processor.process_file("input_stereo.wav", "output_51.wav")
+```
+
+### Utilisation des modules individuels
+
+```python
+from upmix_algorithm.modules import STFTProcessor, Crossover, estimate_panning
+import numpy as np
+
+# STFT
+stft_proc = STFTProcessor(nfft=128, overlap=0.25)
+stft = stft_proc.forward(audio_signal)
+reconstructed = stft_proc.inverse(stft)
+
+# Estimation de panning
 stft_magnitudes = np.abs(stft)  # (n_frames, n_freq, n_channels)
-panning = estimate_panning(stft_magnitudes, layout="stereo")  # (n_frames, n_freq) dans [-1, 1]
+panning = estimate_panning(stft_magnitudes, layout="stereo")
 ```
 
 ## Tests
@@ -114,10 +146,9 @@ Voir `upmix_algorithm/plan_developpement.md` pour le plan de développement dét
 - ✅ `mask_generator.py` - Génération et lissage des masques d'extraction
 - ✅ `extractor.py` - Extraction de sources fréquentielles
 - ✅ `respatializer.py` - Respatialisation vers layout de sortie
+- ✅ `upmix_processor.py` - Processeur principal d'intégration
 
-### Modules en développement
-
-- ⏳ `upmix_processor.py` - Processeur principal d'intégration
+### Tous les modules sont implémentés ! 🎉
 
 ## Spécifications
 
