@@ -17,7 +17,9 @@ auralys_upmix/
 │   │   ├── lfe_processor.py  # Traitement du canal LFE
 │   │   ├── stft_processor.py # STFT/ISTFT avec fenêtre duale
 │   │   ├── re_model_light.py # Estimation de panning (vecteur d'énergie)
-│   │   └── mask_generator.py # Génération et lissage des masques d'extraction
+│   │   ├── mask_generator.py # Génération et lissage des masques d'extraction
+│   │   ├── extractor.py      # Extraction de sources fréquentielles
+│   │   └── respatializer.py  # Respatialisation vers layout de sortie
 │   ├── utils/                # Utilitaires
 │   └── spec_detailed.md      # Spécification détaillée
 ├── tests/                    # Tests unitaires et d'intégration
@@ -110,12 +112,11 @@ Voir `upmix_algorithm/plan_developpement.md` pour le plan de développement dét
 - ✅ `stft_processor.py` - STFT/ISTFT avec fenêtre duale sqrt(hann)
 - ✅ `re_model_light.py` - Estimation de panning (vecteur d'énergie RE)
 - ✅ `mask_generator.py` - Génération et lissage des masques d'extraction
+- ✅ `extractor.py` - Extraction de sources fréquentielles
+- ✅ `respatializer.py` - Respatialisation vers layout de sortie
 
 ### Modules en développement
 
-- ⏳ `extractor.py` - Extraction de sources fréquentielles
-- ⏳ `extractor.py` - Extraction de sources
-- ⏳ `respatializer.py` - Respatialisation
 - ⏳ `upmix_processor.py` - Processeur principal d'intégration
 
 ## Spécifications

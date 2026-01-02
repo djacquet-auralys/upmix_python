@@ -16,6 +16,14 @@ from .crossover import (
     compute_lf_mono1_stereo,
     sum_power_constant,
 )
+from .extractor import (
+    SourceExtractor,
+    apply_mask_to_stft,
+    extract_multiple_sources,
+    extract_source,
+    get_channel_angles,
+    select_closest_channel,
+)
 from .lfe_processor import (
     LFEProcessor,
     create_lfe_from_sum,
@@ -41,5 +49,18 @@ from .re_model_light import (
     get_energy_vector_magnitude,
     get_layout_info,
     get_speaker_unit_vectors,
+)
+from .respatializer import (
+    Respatializer,
+    add_lf_mono1_to_sources,
+    add_lfe_to_output,
+    apply_delay,
+    apply_gain_and_delay,
+    compute_default_gains,
+    get_available_output_layouts,
+    get_output_layout_info,
+    ms_to_samples,
+    parse_source_params,
+    spatialize_sources,
 )
 from .stft_processor import STFTProcessor, compute_latency, create_sqrt_hann_window
