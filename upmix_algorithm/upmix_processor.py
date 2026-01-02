@@ -213,9 +213,7 @@ class UpmixProcessor:
         lfe_signal = self.lfe_processor.process(input_signal)
         return lfe_signal
 
-    def _step3_upmix_frequentiel(
-        self, hf_signals: np.ndarray
-    ) -> List[np.ndarray]:
+    def _step3_upmix_frequentiel(self, hf_signals: np.ndarray) -> List[np.ndarray]:
         """
         Étape 3 : Upmix fréquentiel.
 
@@ -345,15 +343,17 @@ class UpmixProcessor:
             release = self.upmix_params.get(release_key, 50.0)
             mute = self.upmix_params.get(mute_key, 0)
 
-            source_params.append({
-                "pan": pan,
-                "width": width,
-                "slope": slope,
-                "min_gain_db": min_gain_db,
-                "attack_frames": attack,
-                "release_frames": release,
-                "mute": mute,
-            })
+            source_params.append(
+                {
+                    "pan": pan,
+                    "width": width,
+                    "slope": slope,
+                    "min_gain_db": min_gain_db,
+                    "attack_frames": attack,
+                    "release_frames": release,
+                    "mute": mute,
+                }
+            )
 
         return source_params
 
