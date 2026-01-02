@@ -217,7 +217,7 @@ class RampSmooth:
     def process(
         self,
         target_gains: np.ndarray,
-        _power: Optional[np.ndarray] = None,
+        power: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         """
         Traite une frame de gains.
@@ -226,9 +226,8 @@ class RampSmooth:
         ----------
         target_gains : np.ndarray
             Gains cibles pour cette frame, shape (n_freq,).
-        _power : np.ndarray, optional
-            Réservé pour usage futur (freeze si < freeze_threshold).
-            Non utilisé dans cette version.
+        power : np.ndarray, optional
+            Puissance du signal pour le freeze (si < freeze_threshold).
 
         Returns
         -------
@@ -242,6 +241,11 @@ class RampSmooth:
             initial_state = target_gains.copy()
             self._state = initial_state
             return initial_state.copy()
+
+        # Identifier les bins à geler (puissance trop faible)
+        freeze_mask = np.zeros(self.n_freq, dtype=bool)
+        if power is not None:
+            freeze_mask = power < self.freeze_threshold
 
         # Calculer les coefficients de lissage
         attack_coef = 1.0 / self.attack_frames
@@ -262,13 +266,12 @@ class RampSmooth:
             if len(target_gains) > 1 and target_gains[-1] <= self._state[-1]:
                 coefs[-1] = release_coef / 2.0
 
+        # Ne pas mettre à jour si gelé (coef = 0)
+        coefs[freeze_mask] = 0.0
+
         # Appliquer le lissage: state += (target - state) * coef
         delta = target_gains - self._state
         self._state = self._state + delta * coefs
-
-        # Note: Le freeze (power < threshold) est typiquement géré en amont
-        # en ne mettant pas à jour les frames avec une puissance trop faible.
-        # Cette implémentation ne bloque pas explicitement les mises à jour.
 
         # Type assertion pour le type checker
         assert self._state is not None

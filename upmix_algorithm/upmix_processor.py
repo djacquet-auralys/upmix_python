@@ -164,6 +164,9 @@ class UpmixProcessor:
 
         input_signal = input_signal.astype(np.float32)
 
+        # Calcul du RMS d'entrée pour normalisation (Spec ligne 610)
+        input_rms = np.sqrt(np.mean(input_signal**2))
+
         # === ÉTAPE 1 : CROSSOVERS ===
         hf_signals, lf_mono1 = self._step1_crossovers(input_signal)
 
@@ -178,6 +181,11 @@ class UpmixProcessor:
 
         # === ÉTAPE 5 : RESPATIALISATION ===
         output_signal = self._step5_respatialization(sources_with_lf, lfe_signal)
+
+        # Normalisation RMS pour préserver l'énergie globale
+        output_rms = np.sqrt(np.mean(output_signal**2))
+        if output_rms > 1e-9:
+            output_signal *= input_rms / output_rms
 
         return output_signal
 
@@ -233,6 +241,10 @@ class UpmixProcessor:
         stft_magnitudes = np.abs(stft)
         panning = estimate_panning(stft_magnitudes, layout=self.input_layout)
 
+        # Puissance pour le freeze (Spec ligne 561)
+        # On utilise la puissance totale sur tous les canaux pour décider du freeze
+        power = np.sum(stft_magnitudes**2, axis=-1)
+
         # Construire les paramètres des sources
         source_params = self._build_source_params()
 
@@ -243,6 +255,7 @@ class UpmixProcessor:
             source_params=source_params,
             apply_blur=True,
             apply_smoothing=True,
+            power=power,
         )
 
         # ISTFT pour chaque source
@@ -374,6 +387,7 @@ class UpmixProcessor:
         """
         # Lecture du fichier
         sample_rate, input_signal = wavfile.read(input_path)
+        original_dtype = input_signal.dtype
 
         # Mise à jour du sample_rate si différent
         if sample_rate != self.sample_rate:
@@ -381,20 +395,29 @@ class UpmixProcessor:
             self._init_modules()
 
         # Normalisation en float32 [-1, 1]
-        if input_signal.dtype == np.int16:
-            input_signal = input_signal.astype(np.float32) / 32768.0
-        elif input_signal.dtype == np.int32:
-            input_signal = input_signal.astype(np.float32) / 2147483648.0
-        elif input_signal.dtype == np.float64:
-            input_signal = input_signal.astype(np.float32)
+        if original_dtype == np.int16:
+            input_signal_float = input_signal.astype(np.float32) / 32768.0
+        elif original_dtype == np.int32:
+            input_signal_float = input_signal.astype(np.float32) / 2147483648.0
+        else:
+            input_signal_float = input_signal.astype(np.float32)
 
         # Traitement
-        output_signal = self.process(input_signal)
+        output_signal = self.process(input_signal_float)
 
-        # Écriture du fichier de sortie
-        # Conversion en int16
-        output_int16 = np.clip(output_signal * 32768, -32768, 32767).astype(np.int16)
-        wavfile.write(output_path, int(self.sample_rate), output_int16)
+        # Écriture du fichier de sortie en préservant le format d'entrée (Spec ligne 467)
+        if original_dtype == np.int16:
+            output_final = np.clip(output_signal * 32768, -32768, 32767).astype(
+                np.int16
+            )
+        elif original_dtype == np.int32:
+            output_final = np.clip(
+                output_signal * 2147483648, -2147483648, 2147483647
+            ).astype(np.int32)
+        else:
+            output_final = output_signal.astype(original_dtype)
+
+        wavfile.write(output_path, int(self.sample_rate), output_final)
 
     def get_info(self) -> Dict[str, Any]:
         """
