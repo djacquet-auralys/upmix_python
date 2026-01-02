@@ -1,0 +1,189 @@
+// Helpers pour construire le payload API à ajouter dans VenueDesignPage
+const buildSpeakerPts = (speakers) =>
+  speakers.map(s => [Number(s.xMeters), Number(s.yMeters)]); // assure-toi que ce sont des mètres
+
+const buildSpkOrientationsDeg = (speakers) =>
+  speakers.map(s => Number(s.angle)); // déjà en degrés dans l’UI
+
+const computeAudienceBary = (seats) => {
+  if (!seats?.length) return [0,0];
+  const sx = seats.reduce((a,p) => a + p[0], 0);
+  const sy = seats.reduce((a,p) => a + p[1], 0);
+  return [sx / seats.length, sy / seats.length];
+};
+
+// seats côté UI : un tableau [[x,y], ...] en mètres
+// audience_pts : ton polygone d’écoute s’il est disponible (sinon [])
+// panorama_center / width / spread : déjà présents dans venueState.panorama, à adapter à tes clés
+
+
+Dans la section SimulationControls (ou directement dans VenueDesignPage.jsx) ajoute la fonction :
+import { upmixApi } from '../api/upmixClient';
+import { useRef, useState } from 'react';
+
+const abortRef = useRef(null);
+const [isSimLoading, setSimLoading] = useState(false);
+const [simError, setSimError] = useState(null);
+
+const runSimulation = async () => {
+  try {
+    setSimError(null);
+    setSimLoading(true);
+    if (abortRef.current) abortRef.current.abort();
+    abortRef.current = new AbortController();
+
+    const seats = venueState?.simulation?.seats    // si tu stockes déjà les seats
+      || venueState?.listeningArea?.seats         // sinon, prends la source officielle
+      || []; // ex: [[x,y], ...]
+
+    const speaker_pts = buildSpeakerPts(venueState.speakers);
+    const spk_orientations = buildSpkOrientationsDeg(venueState.speakers);
+    const panorama_center = [
+      Number(venueState.panorama?.center?.xMeters || 0),
+      Number(venueState.panorama?.center?.yMeters || 0)
+    ];
+    const payload = {
+      audience_pts: venueState.polygon?.points || [],          // optionnel pour maintenant
+      seats,                                                   // OBLIGATOIRE (côté UI)
+      speaker_pts,
+      spk_orientations,
+      directivity: Number(venueState.speakersDirectivityDeg || 110),
+      panorama_center,
+      panorama_width: Number(venueState.panorama?.widthDeg || 180),
+      audience_bary: computeAudienceBary(seats),
+      spread: Number(venueState.panorama?.spread || 1.0),
+    };
+
+    const res = await upmixApi.seatScore(payload, { signal: abortRef.current.signal });
+    // res: { seat_score, nb_sources, sources, gains_shape, delays_unit }
+
+    // Stocke dans l’état persistant pour le rendu Canvas + actions ultérieures
+    setVenueState(prev => ({
+      ...prev,
+      simulation: {
+        ...(prev.simulation || {}),
+        seats,
+        seatScore: res.seat_score,
+        sources: res.sources || [],
+        meta: { nbSources: res.nb_sources, gainsShape: res.gains_shape, delaysUnit: res.delays_unit }
+      },
+      visibility: { ...(prev.visibility || {}), simulation: true }
+    }));
+  } catch (e) {
+    console.error(e);
+    setSimError(e.message);
+  } finally {
+    setSimLoading(false);
+  }
+};
+
+Expose runSimulation à ton SimulationControls (ex: via prop onRun), ou déclenche-le sur clic d’un bouton.
+
+
+C. Bouton “Send to Engine” (optionnel maintenant)
+
+Si tu veux envoyer au moteur dès maintenant, tu as 2 options :
+
+Option 1 (recommandée) : appeler /gains-delays puis /send-upmix (séquence claire).
+
+Option 2 : faire évoluer /seat-score pour qu’elle renvoie aussi gains et spat_delays (payload plus lourd).
+
+Exemple Option 1 :
+
+const sendToEngine = async () => {
+  try {
+    setSimError(null);
+    setSimLoading(true);
+    const seats = venueState.simulation?.seats || [];
+    const speaker_pts = buildSpeakerPts(venueState.speakers);
+    const panorama_center = [
+      Number(venueState.panorama?.center?.xMeters || 0),
+      Number(venueState.panorama?.center?.yMeters || 0)
+    ];
+    const spread = Number(venueState.panorama?.spread || 1.0);
+    const panorama_width = Number(venueState.panorama?.widthDeg || 180);
+
+    // 1) Replacer les mêmes sources que la simu (ou rappeler place-sources)
+    const audience_bary = computeAudienceBary(seats);
+    const placePayload = { audience_bary, panorama_center, speaker_pts };
+    const { sources } = await upmixApi.placeSources(placePayload);
+
+    // 2) Gains + délais
+    const gdPayload = { spread, panorama_width, sources, audience_bary, speaker_pts };
+    const { gains, spat_delays } = await upmixApi.gainsDelays(gdPayload);
+
+    // 3) Envoi moteur
+    await upmixApi.sendUpmix({
+      sources,
+      gains,
+      spat_delays,
+      max_sources: sources.length,
+      release_max: 200,
+      release_min: 50,
+      slope: 500,
+      attack: 1.0,
+      osc_host: '127.0.0.1',
+      osc_port: 4000,
+      write_file: false
+    });
+
+    // Feedback UI (toast/snackbar)
+    console.log('Upmix parameters sent.');
+  } catch (e) {
+    console.error(e);
+    setSimError(e.message);
+  } finally {
+    setSimLoading(false);
+  }
+};
+
+Passe sendToEngine à ton composant SimulationControls pour le bouton.
+
+
+3) Rendu heatmap dans VenueCanvas
+
+Ton canvas reçoit déjà venueState. Il suffit d’ajouter la surcouche “simulation” (points seats + seatScore).
+
+Dans VenueCanvas (ou un overlay dédié), ajoute un renderer simple :
+
+// Exemple très simple: petits disques colorés par score [0..1]
+function drawSeatScores(ctx, seats, seatScore, worldToCanvas) {
+  if (!seats?.length || !seatScore?.length) return;
+  const rPx = 3; // rayon en pixels
+
+  for (let i = 0; i < seats.length; i++) {
+    const [x, y] = seats[i];               // mètres
+    const score = Math.max(0, Math.min(1, seatScore[i] ?? 0));
+    const { x: cx, y: cy } = worldToCanvas(x, y);  // convertit mètres -> pixels
+
+    // palette simple: bleu (mauvais) -> vert (bon)
+    const g = Math.round(255 * score);
+    const b = Math.round(255 * (1 - score));
+    ctx.fillStyle = `rgba(0, ${g}, ${b}, 0.9)`;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+
+4) UX & robustesse
+
+Debounce / Cancel : tu as déjà AbortController; déclenche runSimulation() sur clic, ou automatiquement avec un debounce (p.ex. 300–500 ms) lorsque panorama_width, spread, positions HP, etc. changent.
+
+Validation : avant l’appel, vérifie qu’il y a au moins 2 HP, des seats non vides, et des angles [0..360).
+
+Unités : tout en mètres (positions), degrés (orientations, panorama_width), secondes (delays — gérés côté backend).
+
+Erreurs : expose simError dans un petit bandeau rouge sous le canvas ; log côté console pour debug.
+
+5) Où brancher dans tes composants
+
+SimulationControls: ajoute deux callbacks en props:
+onRun={runSimulation} et onSend={sendToEngine}.
+Dans ce composant, mappe ces callbacks sur les boutons “Run Simulation” et “Send to Engine”.
+
+VenueCanvas: déjà reçoit venueState. Ajoute le rendu des points colorés si visibility.simulation est vrai.
+
+VenueDesignPage.css: pas de modif obligatoire ; ajoute juste un spinner/bouton disabled quand isSimLoading est vrai.

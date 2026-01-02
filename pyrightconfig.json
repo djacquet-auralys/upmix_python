@@ -1,0 +1,26 @@
+{
+    "include": [
+        "."
+    ],
+    "exclude": [
+        "**/__pycache__",
+        "**/.venv",
+        "**/node_modules"
+    ],
+    "reportMissingImports": "warning",
+    "reportMissingTypeStubs": false,
+    "reportMissingModuleSource": false,
+    "pythonVersion": "3.8",
+    "typeCheckingMode": "basic",
+    "useLibraryCodeForTypes": true,
+    "autoImportCompletions": true,
+    "reportImportCycles": "none",
+    "reportUnusedImport": "warning",
+    "reportUnusedClass": "none",
+    "reportUnusedFunction": "none",
+    "reportUnusedVariable": "none",
+    "reportUnknownMemberType": false,
+    "reportUnknownVariableType": false,
+    "reportUnknownArgumentType": false,
+    "ignoreExtraStubFiles": true
+}

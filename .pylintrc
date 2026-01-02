@@ -1,0 +1,24 @@
+[MASTER]
+# Fichier de configuration Pylint pour le projet
+# Désactive les règles de nommage strictes pour les constantes
+
+[MESSAGES CONTROL]
+# Désactiver les warnings sur les noms de constantes
+disable=
+    C0103,  # invalid-name (noms de constantes)
+    C0111,  # missing-docstring
+    C0301,  # line-too-long
+    C0304,  # missing-final-newline
+
+[FORMAT]
+# Longueur de ligne maximale
+max-line-length=120
+
+[VARIABLES]
+# Noms de variables acceptables (regex)
+variable-rgx=[a-z_][a-z0-9_]{2,30}$
+# Noms de constantes acceptables (regex) - plus permissif
+const-rgx=[a-z_][a-z0-9_]{1,30}$
+
+
+
