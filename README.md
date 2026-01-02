@@ -34,27 +34,34 @@ auralys_upmix/
 ### Installation
 
 1. Cloner le dépôt :
+
 ```bash
-git clone <url-du-repo>
-cd auralys_upmix
+git clone https://github.com/djacquet-auralys/upmix_python.git
+cd upmix_python
 ```
 
 2. Créer un environnement virtuel :
+
 ```bash
 python -m venv .venv
 ```
 
 3. Activer l'environnement virtuel :
+
 - Windows (PowerShell) :
+
 ```powershell
 .venv\Scripts\Activate.ps1
 ```
+
 - Linux/Mac :
+
 ```bash
 source .venv/bin/activate
 ```
 
 4. Installer les dépendances :
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -73,11 +80,13 @@ reconstructed = processor.inverse(stft)
 ## Tests
 
 Exécuter tous les tests :
+
 ```bash
 pytest tests/ -v
 ```
 
 Avec couverture de code :
+
 ```bash
 pytest tests/ --cov=upmix_algorithm --cov-report=html
 ```
