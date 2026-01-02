@@ -12,7 +12,7 @@ Référence : https://www.w3.org/TR/audio-eq-cookbook/#formulae
 """
 
 from enum import Enum
-from typing import Tuple
+from typing import Tuple, cast
 
 import numpy as np
 from scipy.signal import freqz, lfilter, lfilter_zi
@@ -219,7 +219,7 @@ class BiquadFilter:
                 - frequencies: Fréquences en Hz
                 - magnitude_db: Magnitude en dB
         """
-        w, h = freqz(self.b, self.a, worN=n_points)
+        w, h = cast(Tuple[np.ndarray, np.ndarray], freqz(self.b, self.a, worN=n_points))  # type: ignore[arg-type]
         frequencies = w * self.fs / (2 * np.pi)
         magnitude_db = 20 * np.log10(np.abs(h) + 1e-10)
 
