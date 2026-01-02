@@ -24,4 +24,14 @@ from .lfe_processor import (
     get_non_lfe_channels,
     process_lfe,
 )
+from .re_model_light import (
+    compute_energy_vector,
+    energy_vector_to_angle,
+    estimate_panning,
+    estimate_source_width,
+    get_available_layouts,
+    get_energy_vector_magnitude,
+    get_layout_info,
+    get_speaker_unit_vectors,
+)
 from .stft_processor import STFTProcessor, compute_latency, create_sqrt_hann_window

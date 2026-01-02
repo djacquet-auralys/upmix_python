@@ -15,7 +15,8 @@ auralys_upmix/
 │   │   ├── biquad_filter.py  # Filtres IIR Biquad (LPF, HPF, PK, Shelves)
 │   │   ├── crossover.py      # Crossovers et somme à puissance constante
 │   │   ├── lfe_processor.py  # Traitement du canal LFE
-│   │   └── stft_processor.py # STFT/ISTFT avec fenêtre duale
+│   │   ├── stft_processor.py # STFT/ISTFT avec fenêtre duale
+│   │   └── re_model_light.py # Estimation de panning (vecteur d'énergie)
 │   ├── utils/                # Utilitaires
 │   └── spec_detailed.md      # Spécification détaillée
 ├── tests/                    # Tests unitaires et d'intégration
@@ -69,12 +70,17 @@ pip install -r requirements.txt
 ## Utilisation
 
 ```python
-from upmix_algorithm.modules import STFTProcessor, Crossover, LFEProcessor
+from upmix_algorithm.modules import STFTProcessor, Crossover, LFEProcessor, estimate_panning
 
-# Exemple d'utilisation
+# Exemple d'utilisation STFT
 processor = STFTProcessor(nfft=128, overlap=0.25)
 stft = processor.forward(audio_signal)
 reconstructed = processor.inverse(stft)
+
+# Estimation de panning à partir des magnitudes STFT
+import numpy as np
+stft_magnitudes = np.abs(stft)  # (n_frames, n_freq, n_channels)
+panning = estimate_panning(stft_magnitudes, layout="stereo")  # (n_frames, n_freq) dans [-1, 1]
 ```
 
 ## Tests
@@ -101,10 +107,11 @@ Voir `upmix_algorithm/plan_developpement.md` pour le plan de développement dét
 - ✅ `crossover.py` - Crossovers et somme à puissance constante
 - ✅ `lfe_processor.py` - Traitement du canal LFE
 - ✅ `stft_processor.py` - STFT/ISTFT avec fenêtre duale sqrt(hann)
+- ✅ `re_model_light.py` - Estimation de panning (vecteur d'énergie RE)
 
 ### Modules en développement
 
-- ⏳ `panning_estimator.py` - Estimation de panning
+- ⏳ `panning_estimator.py` - Wrapper d'estimation de panning
 - ⏳ `mask_generator.py` - Génération de masques
 - ⏳ `extractor.py` - Extraction de sources
 - ⏳ `respatializer.py` - Respatialisation
