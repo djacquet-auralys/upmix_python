@@ -24,6 +24,14 @@ from .lfe_processor import (
     get_non_lfe_channels,
     process_lfe,
 )
+from .mask_generator import (
+    RampSmooth,
+    apply_freq_blur,
+    apply_temporal_smoothing,
+    create_mask_lut,
+    generate_extraction_mask,
+    interpolate_lut,
+)
 from .re_model_light import (
     compute_energy_vector,
     energy_vector_to_angle,

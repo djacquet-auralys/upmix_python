@@ -12,7 +12,7 @@ Référence : https://www.w3.org/TR/audio-eq-cookbook/#formulae
 """
 
 from enum import Enum
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 from scipy.signal import freqz, lfilter, lfilter_zi

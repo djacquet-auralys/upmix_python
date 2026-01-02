@@ -5,7 +5,7 @@ Implémente la STFT forward et inverse avec fenêtre duale sqrt(hann)
 et overlap-add pour reconstruction parfaite.
 """
 
-from typing import Tuple
+from typing import Optional
 
 import numpy as np
 from scipy.signal import get_window
@@ -28,7 +28,7 @@ def create_sqrt_hann_window(n: int) -> np.ndarray:
     return np.sqrt(hann).astype(np.float32)
 
 
-def compute_latency(nfft: int, overlap: float = 0.25) -> int:
+def compute_latency(nfft: int, _overlap: float = 0.25) -> int:
     """
     Calcule la latence introduite par la STFT/ISTFT.
 
@@ -101,7 +101,7 @@ class STFTProcessor:
         # le facteur de normalisation est la somme des fenêtres carrées
         # divisée par le nombre d'overlaps
         n_overlaps = self.nfft // self.hop_size
-        window_squared_sum = np.sum(self.window**2)
+        window_squared_sum: float = np.sum(self.window**2)
 
         # Pour une reconstruction parfaite, on divise par ce facteur
         return window_squared_sum / n_overlaps
@@ -142,7 +142,9 @@ class STFTProcessor:
 
         return stft
 
-    def inverse(self, stft: np.ndarray, original_length: int = None) -> np.ndarray:
+    def inverse(
+        self, stft: np.ndarray, original_length: Optional[int] = None
+    ) -> np.ndarray:
         """
         Calcule l'ISTFT (reconstruction du signal).
 
@@ -227,7 +229,7 @@ class STFTProcessor:
         return stft
 
     def inverse_multichannel(
-        self, stft: np.ndarray, original_length: int = None
+        self, stft: np.ndarray, original_length: Optional[int] = None
     ) -> np.ndarray:
         """
         Calcule l'ISTFT pour un signal multicanal.
@@ -244,7 +246,7 @@ class STFTProcessor:
                 "STFT doit être un tableau 3D (n_frames, n_freq, n_channels)"
             )
 
-        n_frames, n_freq, n_channels = stft.shape
+        n_frames, _n_freq, n_channels = stft.shape
 
         # Calculer la longueur de sortie
         output_length = (n_frames - 1) * self.hop_size + self.nfft
